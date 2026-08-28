@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Escáner Grados Yopal</title>
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+
+  <style>
+    body { background-color: #f3f4f6; }
+    #reader { width: 100%; border-radius: 8px; overflow: hidden; margin-top: 15px; }
+    #reader video { object-fit: cover; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body class="flex flex-col h-screen">
+
+  <header class="bg-blue-900 text-white p-4 shadow-md text-center">
+    <h1 class="text-xl font-bold">🎓 Control de Ingreso</h1>
+    <p class="text-sm text-blue-200">Grados Yopal</p>
+  </header>
+
+  <main class="flex-grow p-4 flex flex-col items-center max-w-md mx-auto w-full">
+    
+    <div id="setupSection" class="w-full bg-white p-6 rounded-lg shadow-md mb-4 text-center">
+      <h2 class="text-lg font-semibold text-gray-700 mb-2">Seguridad del Staff</h2>
+      <p class="text-sm text-gray-500 mb-4">Ingresa el PIN autorizado para habilitar el escáner.</p>
+      <input type="password" id="pinInput" placeholder="PIN de acceso..." 
+             class="w-full p-3 border border-gray-300 rounded-lg mb-4 text-center text-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+      <button onclick="iniciarEscaner()" 
+              class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-colors">
+        Habilitar Cámara
+      </button>
+    </div>
+
+    <div id="scannerSection" class="w-full hidden flex flex-col items-center">
+      <div id="reader"></div>
+      <p class="text-sm text-gray-500 mt-3 text-center">Apunta la cámara al código QR de la escarapela.</p>
+    </div>
+
+    <div id="resultModal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
+      <div id="resultCard" class="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6 text-center transform transition-all">
+        <div id="iconContainer" class="mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-4"></div>
+        <h3 id="resultTitle" class="text-2xl font-bold mb-1">Resultado</h3>
+        <p id="resultName" class="text-lg font-semibold text-gray-800 mb-1"></p>
+        <p id="resultCategory" class="text-sm text-gray-500 mb-3 font-medium uppercase tracking-wide"></p>
+        <p id="resultMessage" class="text-gray-600 mb-6"></p>
+        
+        <button onclick="continuarEscaneando()" 
+                class="w-full bg-gray-800 text-white font-bold py-3 px-4 rounded-lg hover:bg-gray-900">
+          Escanear Siguiente
+        </button>
+      </div>
+    </div>
+
+    <div id="loadingIndicator" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="bg-white p-4 rounded-lg flex items-center space-x-3">
+        <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-900"></div>
+        <span class="text-gray-800 font-medium">Validando ingreso...</span>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // ⚠️ REEMPLAZA ESTA URL CON LA URL DE TU APLICACIÓN WEB DE GOOGLE APPS SCRIPT
+    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/TU_CODIGO_AQUI/exec";
+
+    let html5QrCode;
+    let currentPin = '';
+
+    const ICONS = {
+      success: `<svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>`,
+      warning: `<svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>`,
+      error: `<svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>`
+    };
+
+    function iniciarEscaner() {
+      const pin = document.getElementById('pinInput').value;
+      if (!pin) {
+        alert("Por favor, ingresa el PIN del Staff.");
+        return;
+      }
+      currentPin = pin;
+
+      document.getElementById('setupSection').classList.add('hidden');
+      document.getElementById('scannerSection').classList.remove('hidden');
+
+      html5QrCode = new Html5Qrcode("reader");
+      const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+
+      html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess)
+        .catch(err => {
+          alert("Error al iniciar cámara: " + err);
+          document.getElementById('setupSection').classList.remove('hidden');
+          document.getElementById('scannerSection').classList.add('hidden');
+        });
+    }
+
+    function onScanSuccess(decodedText) {
+      if(html5QrCode) html5QrCode.pause();
+      
+      document.getElementById('loadingIndicator').classList.remove('hidden');
+      if (navigator.vibrate) navigator.vibrate(100);
+
+      // Usar FETCH en lugar de google.script.run para conectar GitHub con Apps Script
+      const url = `${APPS_SCRIPT_URL}?action=checkin&token=${encodeURIComponent(decodedText)}&pin=${encodeURIComponent(currentPin)}`;
+
+      fetch(url)
+        .then(response => {
+          if (!response.ok) throw new Error('Error en la red');
+          return response.json();
+        })
+        .then(data => procesarRespuesta(data))
+        .catch(error => procesarFallo(error));
+    }
+
+    function procesarRespuesta(respuesta) {
+      document.getElementById('loadingIndicator').classList.add('hidden');
+      
+      const modal = document.getElementById('resultModal');
+      const iconContainer = document.getElementById('iconContainer');
+      const title = document.getElementById('resultTitle');
+      const name = document.getElementById('resultName');
+      const category = document.getElementById('resultCategory');
+      const message = document.getElementById('resultMessage');
+
+      name.textContent = respuesta.nombre || '';
+      category.textContent = respuesta.categoria || '';
+      message.textContent = respuesta.mensaje || '';
+      title.textContent = respuesta.titulo || '';
+
+      iconContainer.className = "mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-4 ";
+      
+      if (respuesta.status === 'success') {
+        iconContainer.classList.add("bg-green-500");
+        iconContainer.innerHTML = ICONS.success;
+        title.className = "text-2xl font-bold mb-1 text-green-600";
+        if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+      } else if (respuesta.status === 'warning') {
+        iconContainer.classList.add("bg-yellow-500");
+        iconContainer.innerHTML = ICONS.warning;
+        title.className = "text-2xl font-bold mb-1 text-yellow-600";
+        if (navigator.vibrate) navigator.vibrate(300);
+      } else {
+        iconContainer.classList.add("bg-red-500");
+        iconContainer.innerHTML = ICONS.error;
+        title.className = "text-2xl font-bold mb-1 text-red-600";
+        if (navigator.vibrate) navigator.vibrate([500]);
+      }
+
+      modal.classList.remove('hidden');
+    }
+
+    function procesarFallo(error) {
+      document.getElementById('loadingIndicator').classList.add('hidden');
+      alert("Error de conexión. Revisa el internet y vuelve a intentar.");
+      if(html5QrCode) html5QrCode.resume();
+    }
+
+    function continuarEscaneando() {
+      document.getElementById('resultModal').classList.add('hidden');
+      if(html5QrCode) html5QrCode.resume();
+    }
+  </script>
+</body>
+</html>
