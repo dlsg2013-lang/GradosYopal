@@ -64,8 +64,8 @@
   </main>
 
   <script>
-    // ⚠️ REEMPLAZA ESTA URL CON LA URL DE TU APLICACIÓN WEB DE GOOGLE APPS SCRIPT
-    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwicKGkDKTtuxLRpIeJVS_tKo23MZ7-cvsJPj3Rs6L35w0Ea3qJoJtgBzcvN31-cXeY/exec";
+   // ⚠️ AQUÍ PUSE TU NUEVA URL
+    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzbYgRNIPM53yBW-Qh14klcjgyp8_F5NpoC7Ru1ZxPW4wYmpm6pydsxE6nwEYG2mOSM/exec";
 
     let html5QrCode;
     let currentPin = '';
@@ -96,6 +96,24 @@
           document.getElementById('setupSection').classList.remove('hidden');
           document.getElementById('scannerSection').classList.add('hidden');
         });
+    }
+
+    function onScanSuccess(decodedText) {
+      if(html5QrCode) html5QrCode.pause();
+      
+      document.getElementById('loadingIndicator').classList.remove('hidden');
+      if (navigator.vibrate) navigator.vibrate(100);
+
+      const url = `${APPS_SCRIPT_URL}?action=checkin&token=${encodeURIComponent(decodedText)}&pin=${encodeURIComponent(currentPin)}`;
+
+      // ⚠️ AQUÍ ESTÁ EL ARREGLO DE CONEXIÓN: method: "GET" y redirect: "follow"
+      fetch(url, { method: "GET", redirect: "follow" })
+        .then(response => {
+          if (!response.ok) throw new Error('Error en la red');
+          return response.json();
+        })
+        .then(data => procesarRespuesta(data))
+        .catch(error => procesarFallo(error));
     }
 
     function onScanSuccess(decodedText) {
