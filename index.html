@@ -64,7 +64,7 @@
   </main>
 
   <script>
-// URL actualizada de la Web App
+    // URL actualizada de la Web App
     const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzRrw92W7COe5K6ZNJNR1R6jg2Zcs3ohI9oG1-f3Ik2YnpXLFgJ-iGSuf7PDj5dNDi-/exec";
 
     let html5QrCode;
@@ -98,8 +98,51 @@
         });
     }
 
-// FUNCIÓN DE ESCANEO SEGURA CON FORMULARIO OCULTO (Evita errores de red)
-// FUNCIÓN DE ESCANEO CON LECTURA DE RESPUESTA EN VIVO
+    // Función para procesar la respuesta JSON del backend y mostrar el modal adecuado
+    function procesarRespuesta(data) {
+      document.getElementById('loadingIndicator').classList.add('hidden');
+
+      const modal = document.getElementById('resultModal');
+      const iconContainer = document.getElementById('iconContainer');
+      const title = document.getElementById('resultTitle');
+      const name = document.getElementById('resultName');
+      const category = document.getElementById('resultCategory');
+      const message = document.getElementById('resultMessage');
+
+      // Limpiar clases previas del título e icono
+      title.className = 'text-2xl font-bold mb-1';
+      iconContainer.className = 'mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-4';
+
+      switch(data.status) {
+        case 'success':
+          iconContainer.classList.add('bg-green-500');
+          iconContainer.innerHTML = ICONS.success;
+          title.classList.add('text-green-600');
+          break;
+        case 'warning':
+          iconContainer.classList.add('bg-yellow-500');
+          iconContainer.innerHTML = ICONS.warning;
+          title.classList.add('text-yellow-600');
+          break;
+        case 'error':
+          iconContainer.classList.add('bg-red-500');
+          iconContainer.innerHTML = ICONS.error;
+          title.classList.add('text-red-600');
+          break;
+        default:
+          iconContainer.classList.add('bg-gray-500');
+          iconContainer.innerHTML = ICONS.warning;
+          title.classList.add('text-gray-600');
+      }
+
+      title.textContent = data.titulo || 'Resultado';
+      name.textContent = data.nombre || '';
+      category.textContent = data.categoria || '';
+      message.textContent = data.mensaje || '';
+
+      modal.classList.remove('hidden');
+    }
+
     function onScanSuccess(decodedText) {
       if(html5QrCode) html5QrCode.pause();
       
@@ -108,19 +151,15 @@
 
       const url = `${APPS_SCRIPT_URL}?action=checkin&token=${encodeURIComponent(decodedText)}&pin=${encodeURIComponent(currentPin)}`;
 
-      // Usamos fetch con modo no-cors o una petición JSONP/GET limpia
       fetch(url, { method: "GET", redirect: "follow" })
         .then(response => response.json())
         .then(data => {
           procesarRespuesta(data);
         })
         .catch(error => {
-          // Si por seguridad del navegador bloquea el JSON de Google pero el registro sí se hizo, 
-          // mostramos un aviso preventivo o reintentamos. 
-          // Nota: Si configuraste bien el Apps Script, este .then() leerá el JSON correctamente.
           document.getElementById('loadingIndicator').classList.add('hidden');
           
-          // Fallback visual si el navegador bloquea la lectura por CORS pero la petición pasó:
+          // Fallback visual en caso de error de red o CORS
           const modal = document.getElementById('resultModal');
           const iconContainer = document.getElementById('iconContainer');
           const title = document.getElementById('resultTitle');
@@ -139,12 +178,6 @@
 
           modal.classList.remove('hidden');
         });
-    }
-
-    function procesarFallo(error) {
-      document.getElementById('loadingIndicator').classList.add('hidden');
-      alert("Error de conexión con la base de datos. Detalles: " + error.message);
-      if(html5QrCode) html5QrCode.resume();
     }
 
     function continuarEscaneando() {
