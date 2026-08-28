@@ -64,7 +64,7 @@
   </main>
 
   <script>
-   // ⚠️ AQUÍ PUSE TU NUEVA URL
+    // URL correcta de tu Web App
     const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzbYgRNIPM53yBW-Qh14klcjgyp8_F5NpoC7Ru1ZxPW4wYmpm6pydsxE6nwEYG2mOSM/exec";
 
     let html5QrCode;
@@ -98,6 +98,7 @@
         });
     }
 
+    // FUNCIÓN ÚNICA DE ESCANEO (Ya borramos la duplicada)
     function onScanSuccess(decodedText) {
       if(html5QrCode) html5QrCode.pause();
       
@@ -106,26 +107,7 @@
 
       const url = `${APPS_SCRIPT_URL}?action=checkin&token=${encodeURIComponent(decodedText)}&pin=${encodeURIComponent(currentPin)}`;
 
-      // ⚠️ AQUÍ ESTÁ EL ARREGLO DE CONEXIÓN: method: "GET" y redirect: "follow"
       fetch(url, { method: "GET", redirect: "follow" })
-        .then(response => {
-          if (!response.ok) throw new Error('Error en la red');
-          return response.json();
-        })
-        .then(data => procesarRespuesta(data))
-        .catch(error => procesarFallo(error));
-    }
-
-    function onScanSuccess(decodedText) {
-      if(html5QrCode) html5QrCode.pause();
-      
-      document.getElementById('loadingIndicator').classList.remove('hidden');
-      if (navigator.vibrate) navigator.vibrate(100);
-
-      // Usar FETCH en lugar de google.script.run para conectar GitHub con Apps Script
-      const url = `${APPS_SCRIPT_URL}?action=checkin&token=${encodeURIComponent(decodedText)}&pin=${encodeURIComponent(currentPin)}`;
-
-      fetch(url)
         .then(response => {
           if (!response.ok) throw new Error('Error en la red');
           return response.json();
@@ -173,7 +155,7 @@
 
     function procesarFallo(error) {
       document.getElementById('loadingIndicator').classList.add('hidden');
-      alert("Error de conexión. Revisa el internet y vuelve a intentar.");
+      alert("Error de conexión con la base de datos. Detalles: " + error.message);
       if(html5QrCode) html5QrCode.resume();
     }
 
